@@ -30,8 +30,48 @@ import Layout from "@/components/Layout";
 import CardDetail from "@/components/Card/CardDetail";
 
 export default function Home() {
+  const [pictureList, setPictureList] = useState([]);
+  const [totalPages, setTotalPages] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const [inputQuery, setInputQuery] = useState("");
+  const [value] = useDebounce(inputQuery, 500);
+
+  const [isLoading, setIsLoading] = useState(false);
+
+  const { favoriteList, addFavoriteById } = useGlobal();
+  const isFavorite = (id) =>
+    favoriteList.findIndex((item) => item.id === id) > -1;
+
+  const router = useRouter();
+  const { id: picId } = router.query;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const searchResults = await searchPicturesByQuery(value);
+      setPictureList(searchResults.results);
+      setTotalPages(searchResults.totalPages);
+      setIsLoading(false);
+    } catch (error) {
+      setIsLoading(false);
+      console.error(error?.message || "Error: Cannot search pictures");
+    }
+  };
+
+  const handleClickFavorite = (e, id) => {
+    e.stopPropagation();
+    addFavoriteById(id);
+  };
+
   return (
     <Layout>
+      <Head>
+        <title>{appTitle}</title>
+      </Head>
+      <Toolbar />
       <Container
         maxWidth="md"
         sx={{
@@ -41,12 +81,109 @@ export default function Home() {
           flexDirection: "column",
         }}
       >
-        <main>
-          <Toolbar />
-          <div>search form</div>
-          <div>search result</div>
-        </main>
+        <Box
+          component="form"
+          sx={{
+            maxWidth: "100%",
+          }}
+          noValidate
+          autoComplete="off"
+        >
+          <TextField
+            sx={{
+              backgroundColor: "#fff",
+              mb: 3,
+            }}
+            hiddenLabel
+            fullWidth
+            variant="outlined"
+            placeholder="Search picture"
+            value={inputQuery}
+            onChange={(e) => setInputQuery(e.currentTarget.value)}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    aria-label="search"
+                    onClick={handleSubmit}
+                    edge="end"
+                  >
+                    <SearchIcon />
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
+        </Box>
+        <Grid container rowSpacing={1} columnSpacing={{ xs: 1, sm: 2, md: 3 }}>
+          {isLoading
+            ? "Loading..."
+            : pictureList.map((item) => (
+                <Grid item xs={12} sm={6} md={4} key={item.id}>
+                  <Card>
+                    <Link href={`/?id=${item.id}`} as={`/pictures/${item.id}`}>
+                      <Image
+                        src={item.urls.thumb}
+                        width={500}
+                        height={500}
+                        loading="lazy"
+                        alt={item.alt_description}
+                      />
+                      <CardHeader
+                        title={item.alt_description}
+                        subheader={item.user.name}
+                      />
+                    </Link>
+                    <CardActions disableSpacing>
+                      <IconButton
+                        aria-label="add to favorites"
+                        onClick={(e) => handleClickFavorite(e, item.id)}
+                      >
+                        <FavoriteIcon
+                          sx={{ color: isFavorite(item.id) ? red[500] : "" }}
+                        />
+                      </IconButton>
+                      <RWebShare
+                        data={{
+                          text: item.alt_description,
+                          url: item.links.html,
+                          title: "Share",
+                        }}
+                        sites={shareSites}
+                        onClick={() => console.log("shared successfully!")}
+                      >
+                        <IconButton aria-label="share">
+                          <ShareIcon />
+                        </IconButton>
+                      </RWebShare>
+                    </CardActions>
+                  </Card>
+                </Grid>
+              ))}
+        </Grid>
+        <Modal
+          open={!!router.query.id}
+          onClose={() => router.push("/")}
+          aria-labelledby="modal-modal-title"
+          aria-describedby="modal-modal-description"
+        >
+          <Box sx={style}>
+            <CardDetail id={picId} />
+          </Box>
+        </Modal>
       </Container>
     </Layout>
   );
 }
+
+const style = {
+  position: "absolute",
+  top: "50%",
+  left: "50%",
+  transform: "translate(-50%, -50%)",
+  width: 700,
+  bgcolor: "background.paper",
+  border: "2px solid #000",
+  boxShadow: 24,
+  p: 4,
+};
