@@ -14,5 +14,5 @@ export const navItems = [
   },
 ];
 
-export const perPage = 30;
+export const perPage = 15;
 export const shareSites = ["facebook", "twitter", "whatsapp", "linkedin"];

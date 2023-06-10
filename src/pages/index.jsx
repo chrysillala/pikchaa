@@ -25,6 +25,8 @@ import FavoriteIcon from "@mui/icons-material/Favorite";
 import ShareIcon from "@mui/icons-material/Share";
 import Modal from "@mui/material/Modal";
 import { red } from "@mui/material/colors";
+import Pagination from "@mui/material/Pagination";
+import Stack from "@mui/material/Stack";
 
 import Layout from "@/components/Layout";
 import CardDetail from "@/components/Card/CardDetail";
@@ -33,9 +35,10 @@ export default function Home() {
   const [pictureList, setPictureList] = useState([]);
   const [totalPages, setTotalPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
+  const hasNext = currentPage < totalPages;
 
   const [inputQuery, setInputQuery] = useState("");
-  const [value] = useDebounce(inputQuery, 500);
+  const [q] = useDebounce(inputQuery, 500);
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -51,9 +54,9 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      const searchResults = await searchPicturesByQuery(value);
+      const searchResults = await searchPicturesByQuery(q);
       setPictureList(searchResults.results);
-      setTotalPages(searchResults.totalPages);
+      setTotalPages(searchResults.total_pages);
       setIsLoading(false);
     } catch (error) {
       setIsLoading(false);
@@ -64,6 +67,20 @@ export default function Home() {
   const handleClickFavorite = (e, id) => {
     e.stopPropagation();
     addFavoriteById(id);
+  };
+
+  const handlePageChange = async (e, page) => {
+    setCurrentPage(page);
+    setIsLoading(true);
+
+    try {
+      const searchResults = await searchPicturesByQuery(q, page);
+      setPictureList(searchResults.results);
+      setIsLoading(false);
+    } catch (error) {
+      setIsLoading(false);
+      console.error(error?.message || "Error: Cannot search pictures");
+    }
   };
 
   return (
@@ -161,6 +178,23 @@ export default function Home() {
                 </Grid>
               ))}
         </Grid>
+        {totalPages > 0 && (
+          <Box
+            sx={{
+              my: 4,
+              display: "flex",
+              justifyContent: "center",
+            }}
+          >
+            <Stack spacing={2}>
+              <Pagination
+                count={totalPages}
+                page={currentPage}
+                onChange={handlePageChange}
+              />
+            </Stack>
+          </Box>
+        )}
         <Modal
           open={!!router.query.id}
           onClose={() => router.push("/")}
